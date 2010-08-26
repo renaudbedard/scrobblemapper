@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Collections;
 using System.Threading.Tasks;
+using ScrobbleMapper.Forms;
 
 namespace ScrobbleMapper.LastFm
 {
@@ -38,7 +39,7 @@ namespace ScrobbleMapper.LastFm
             taskContext.Description = "Fetching weekly charts list";
             var chartsResponse = client.UserGetWeeklyChartList(state.User);
             if (chartsResponse.StatusCode == StatusCode.Failed)
-                throw new InvalidOperationException(chartsResponse.Error.Message);
+                throw new InvalidOperationException("This user does not exist, or it doesn't have any weekly chart generated yet ('" + chartsResponse.Error.Message + "')");
 
             // Get the tracks...
             taskContext.TotalItems = chartsResponse.Content.Charts.Length;
@@ -60,9 +61,8 @@ namespace ScrobbleMapper.LastFm
 
                     var tracksResponse = client.UserGetWeeklyTrackChart(state.User, range.From, range.To);
                     if (tracksResponse.StatusCode == StatusCode.Failed)
-                        throw new InvalidOperationException(chartsResponse.Error.Message);
-
-                    if (tracksResponse.Content.Tracks != null) // This does happen sometimes
+                        state.Errors.Enqueue(new QualifiedError(range.From.ToShortDateString() + " to " + range.To.ToShortDateString(), "'" + tracksResponse.Error.Message + "' (scrobbles from that week were ignored)"));
+                    else if (tracksResponse.Content.Tracks != null) // This does happen sometimes
                         parallelState.ThreadLocalState.AddRange(from track in tracksResponse.Content.Tracks
                                                                 select new ScrobbledTrack(track.Artist.Name, track.Title,
                                                                                           track.PlayCount, range.To));
@@ -90,17 +90,19 @@ namespace ScrobbleMapper.LastFm
                     trackSet.Add(key, track);
             }
 
-            return new FetchResult(trackSet.Values.ToArray());
+            return new FetchResult(trackSet.Values.ToArray(), state.Errors.ToArray());
         }
 
         class FetchState
         {
             public readonly ConcurrentQueue<IEnumerable<ScrobbledTrack>> WeeklyTracks;
+            public readonly ConcurrentQueue<QualifiedError> Errors;
             public readonly string User;
 
             public FetchState(string user)
             {
                 WeeklyTracks = new ConcurrentQueue<IEnumerable<ScrobbledTrack>>();
+                Errors = new ConcurrentQueue<QualifiedError>();
                 User = user;
             }
         }
@@ -109,10 +111,12 @@ namespace ScrobbleMapper.LastFm
     class FetchResult
     {
         public readonly IEnumerable<ScrobbledTrack> Scrobbles;
+        public readonly IEnumerable<QualifiedError> Errors;
 
-        public FetchResult(IEnumerable<ScrobbledTrack> scrobbles)
+        public FetchResult(IEnumerable<ScrobbledTrack> scrobbles, IEnumerable<QualifiedError> errors)
         {
             Scrobbles = scrobbles;
+            Errors = errors;
         }
     }
 }

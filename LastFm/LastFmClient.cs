@@ -34,7 +34,7 @@ namespace ScrobbleMapper.LastFm
             {
                 return Channel.UserGetWeeklyTrackChart(user, from.ToUnixTime(), to.ToUnixTime(), ApiKey);
             }
-            catch (ProtocolException ex)
+            catch (Exception ex)
             {
                 return new LastFmResponse<WeeklyTrackChart>
                 {

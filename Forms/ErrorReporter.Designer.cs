@@ -51,9 +51,9 @@
             this.ErrorsLabel.AutoSize = true;
             this.ErrorsLabel.Location = new System.Drawing.Point(12, 9);
             this.ErrorsLabel.Name = "ErrorsLabel";
-            this.ErrorsLabel.Size = new System.Drawing.Size(292, 13);
+            this.ErrorsLabel.Size = new System.Drawing.Size(357, 13);
             this.ErrorsLabel.TabIndex = 2;
-            this.ErrorsLabel.Text = "Some errors have occured while updating library tracks.";
+            this.ErrorsLabel.Text = "One or more error(s) has/have occured while updating library tracks.";
             // 
             // ErrorList
             // 
