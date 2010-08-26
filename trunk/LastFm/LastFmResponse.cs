@@ -42,14 +42,7 @@ namespace ScrobbleMapper.LastFm
             {
                 // Deserialize the expected result
                 if (reader.MoveToContent() == XmlNodeType.Element)
-                    try
-                    {
-                        Content = (T) ContentSerializer.Deserialize(reader);
-                    } 
-                    catch (Exception)
-                    {
-                        reader.Skip();
-                    }
+                    Content = (T) ContentSerializer.Deserialize(reader);
             }
             else
             {

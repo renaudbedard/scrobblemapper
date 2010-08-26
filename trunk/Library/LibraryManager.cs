@@ -79,7 +79,7 @@ namespace ScrobbleMapper.Library
                     catch (COMException e)
                     {
                         // Log errors to a list
-                        state.Errors.Enqueue(new UpdateError(media, InterpretErrorCode(e.ErrorCode)));
+                        state.Errors.Enqueue(new QualifiedError(media.ToString(), InterpretErrorCode(e.ErrorCode)));
                         Interlocked.Increment(ref state.UpdateFailed);
                     }
                 }
@@ -201,7 +201,7 @@ namespace ScrobbleMapper.Library
             public readonly Dictionary<string, Dictionary<string, List<LibraryTrack>>> LibraryArtists;
             public readonly ConcurrentQueue<FuzzyMatch> FuzzyMatches = new ConcurrentQueue<FuzzyMatch>();
             public readonly IEnumerable<ScrobbledTrack> Scrobbles;
-            public readonly ConcurrentQueue<UpdateError> Errors = new ConcurrentQueue<UpdateError>();
+            public readonly ConcurrentQueue<QualifiedError> Errors = new ConcurrentQueue<QualifiedError>();
 
             public int NotFound;
             public int Updated;
@@ -269,7 +269,7 @@ namespace ScrobbleMapper.Library
                                 }
                                 catch (COMException e)
                                 {
-                                    state.Errors.Enqueue(new UpdateError(media, InterpretErrorCode(e.ErrorCode)));
+                                    state.Errors.Enqueue(new QualifiedError(media.ToString(), InterpretErrorCode(e.ErrorCode)));
                                     state.UpdateFailed++;
                                 }
 
@@ -290,7 +290,7 @@ namespace ScrobbleMapper.Library
         {
             public readonly IEnumerable<FuzzyMatch> FuzzyMatches;
             public readonly Form HostForm;
-            public readonly ConcurrentQueue<UpdateError> Errors = new ConcurrentQueue<UpdateError>();
+            public readonly ConcurrentQueue<QualifiedError> Errors = new ConcurrentQueue<QualifiedError>();
 
             public int Updated;
             public int AlreadyUpToDate;
@@ -308,13 +308,13 @@ namespace ScrobbleMapper.Library
 
     class ChooseFuzzyMatchesResult
     {
-        public readonly IEnumerable<UpdateError> Errors;
+        public readonly IEnumerable<QualifiedError> Errors;
 
         public readonly int Updated;
         public readonly int AlreadyUpToDate;
         public readonly int UpdateFailed;
 
-        public ChooseFuzzyMatchesResult(int updated, int alreadyUpToDate, int updateFailed, UpdateError[] errors)
+        public ChooseFuzzyMatchesResult(int updated, int alreadyUpToDate, int updateFailed, QualifiedError[] errors)
         {
             Updated = updated;
             AlreadyUpToDate = alreadyUpToDate;
@@ -326,14 +326,14 @@ namespace ScrobbleMapper.Library
     class MapResult
     {
         public readonly IEnumerable<FuzzyMatch> FuzzyMatches;
-        public readonly IEnumerable<UpdateError> Errors;
+        public readonly IEnumerable<QualifiedError> Errors;
 
         public readonly int Updated;
         public readonly int AlreadyUpToDate;
         public readonly int NotFound;
         public readonly int UpdateFailed;
 
-        public MapResult(FuzzyMatch[] fuzzyMatches, int updated, int alreadyUpToDate, int notFound, int updateFailed, UpdateError[] errors)
+        public MapResult(FuzzyMatch[] fuzzyMatches, int updated, int alreadyUpToDate, int notFound, int updateFailed, QualifiedError[] errors)
         {
             FuzzyMatches = fuzzyMatches;
             Updated = updated;
@@ -341,18 +341,6 @@ namespace ScrobbleMapper.Library
             NotFound = notFound;
             UpdateFailed = updateFailed;
             Errors = errors;
-        }
-    }
-
-    class UpdateError
-    {
-        public readonly ILibraryTrack Track;
-        public readonly string Error;
-
-        public UpdateError(ILibraryTrack track, string error)
-        {
-            Track = track;
-            Error = error;
         }
     }
 }

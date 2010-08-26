@@ -47,6 +47,9 @@ namespace ScrobbleMapper.Forms
 
             TaskUtil.PerformForegroundTask(this, fetcher.FetchAsync(UsernameText.Text), result =>
             {
+                if (result.Errors.Count() > 0)
+                    new ErrorReporter(result.Errors) { AlternateTaskName = "fetching the user's scrobbles.", AlternateItemName = "Weekly chart" }.ShowDialog();
+
                 scrobbles = result.Scrobbles;
                 TracksView.DataSource = new ScrobbledTrackBindingList(scrobbles);
                 MapToWmpButton.Enabled = hasWmp;
@@ -61,9 +64,9 @@ namespace ScrobbleMapper.Forms
                 else
                     errorMessage = error.Message;
 
-                MessageBox.Show("This user does not exist, or there was an error fetching his scrobbles." +
+                MessageBox.Show("There was an error fetching this user's scrobbles." +
                                 Environment.NewLine + Environment.NewLine +
-                                "Details : " + errorMessage, "No results.",
+                                "Details : " + errorMessage, "Error.",
                                 MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             });
         }
