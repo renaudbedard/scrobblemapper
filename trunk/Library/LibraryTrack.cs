@@ -64,8 +64,13 @@ namespace ScrobbleMapper.Library
 
             album = new LazyInit<string>(() => libraryItem.getItemInfo(AlbumTitleAttribute) ?? "");
 
-            playCountCache = new Cacheable<int>(
-                () => int.Parse(LibraryItem.getItemInfo(PlayCountAttribute) ?? "0"),
+            playCountCache = new Cacheable<int>(() =>
+                {
+                    int playCount;
+                    if (!int.TryParse(LibraryItem.getItemInfo(PlayCountAttribute), out playCount))
+                        return 0;
+                    return playCount;
+                },
                 value => LibraryItem.setItemInfo(PlayCountAttribute, value.ToString()));
 
             // Not implemented (more like implementable...)
