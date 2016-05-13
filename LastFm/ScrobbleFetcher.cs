@@ -17,7 +17,7 @@ namespace ScrobbleMapper.LastFm
         /// <summary>
         /// My API key! Don't look!
         /// </summary>
-        const string ApiKey = "62b743e5de48ef452744c7e151feca07";
+        const string ApiKey = "83cfe31c4abe5d87fa7465f0a3cafd21";
 
         readonly LastFmClient client = new LastFmClient(ApiKey);
 

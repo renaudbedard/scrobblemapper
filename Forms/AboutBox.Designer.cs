@@ -83,8 +83,7 @@
             this.LicenseLabel.Name = "LicenseLabel";
             this.LicenseLabel.Size = new System.Drawing.Size(352, 30);
             this.LicenseLabel.TabIndex = 4;
-            this.LicenseLabel.Text = "Licensed under the Creative Commons Attribution-Share Alike 2.5 (Canada) license." +
-                " Some rights reserved.";
+            this.LicenseLabel.Text = "Licensed under the MIT License. See the license.txt file for more information.";
             // 
             // VersionLabel
             // 
@@ -93,7 +92,7 @@
             this.VersionLabel.Name = "VersionLabel";
             this.VersionLabel.Size = new System.Drawing.Size(64, 13);
             this.VersionLabel.TabIndex = 4;
-            this.VersionLabel.Text = "Version 1.0";
+            this.VersionLabel.Text = "Version 2.1";
             // 
             // TitleLabel
             // 

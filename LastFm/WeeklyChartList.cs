@@ -2,20 +2,15 @@
 using System.Xml.Schema;
 using System.Xml;
 using System;
+using System.Xml.Linq;
+using System.Linq;
 
 namespace ScrobbleMapper.LastFm
 {
     [XmlRoot("weeklychartlist")]
-    public struct WeeklyChartList
+    public struct WeeklyChartList : IXmlSerializable
     {
-        [XmlElement("chart")] 
         public Chart[] Charts;
-    }
-
-    public struct Chart : IXmlSerializable
-    {
-        public DateTime From;
-        public DateTime To;
 
         public XmlSchema GetSchema()
         {
@@ -24,15 +19,23 @@ namespace ScrobbleMapper.LastFm
 
         public void ReadXml(XmlReader reader)
         {
-            // Convert the response's Unix times to .NET DateTime's
-            From = UnixTime.ToDate(long.Parse(reader.GetAttribute("from")));
-            To = UnixTime.ToDate(long.Parse(reader.GetAttribute("to")));
-            reader.Read();
+            XElement root = (XElement) XNode.ReadFrom(reader);
+            Charts = root.Elements().Select(x => new Chart
+            {
+                From = UnixTime.ToDate(long.Parse(x.Attribute("from").Value)),
+                To = UnixTime.ToDate(long.Parse(x.Attribute("to").Value)),
+            }).ToArray();
         }
 
         public void WriteXml(XmlWriter writer)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
+    }
+
+    public struct Chart
+    {
+        public DateTime From;
+        public DateTime To;
     }
 }
