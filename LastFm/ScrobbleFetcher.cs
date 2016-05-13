@@ -64,7 +64,7 @@ namespace ScrobbleMapper.LastFm
                         state.Errors.Enqueue(new QualifiedError(range.From.ToShortDateString() + " to " + range.To.ToShortDateString(), "'" + tracksResponse.Error.Message + "' (scrobbles from that week were ignored)"));
                     else if (tracksResponse.Content.Tracks != null) // This does happen sometimes
                         parallelState.ThreadLocalState.AddRange(from track in tracksResponse.Content.Tracks
-                                                                select new ScrobbledTrack(track.Artist.Name, track.Title,
+                                                                select new ScrobbledTrack(track.Artist, track.Title,
                                                                                           track.PlayCount, range.To));
 
                     taskContext.ReportItemCompleted();

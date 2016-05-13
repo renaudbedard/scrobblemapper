@@ -1,39 +1,43 @@
-﻿using System.Xml.Serialization;
+﻿using System.Xml;
+using System.Xml.Serialization;
+using System.Xml.Linq;
+using System.Linq;
+using System;
+using System.Xml.Schema;
 
 namespace ScrobbleMapper.LastFm
 {
     [XmlRoot("weeklytrackchart")]
-    public struct WeeklyTrackChart
+    public struct WeeklyTrackChart : IXmlSerializable
     {
-        [XmlElement("track")] 
         public Track[] Tracks;
+
+        public XmlSchema GetSchema()
+        {
+            return null;
+        }
+
+        public void ReadXml(XmlReader reader)
+        {
+            XElement root = (XElement)XNode.ReadFrom(reader);
+            Tracks = root.Elements().Select(x => new Track
+            {
+                Artist = x.Element("artist").Value,
+                Title = x.Element("name").Value,
+                PlayCount = int.Parse(x.Element("playcount").Value)
+            }).ToArray();
+        }
+
+        public void WriteXml(XmlWriter writer)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public struct Track
     {
-        [XmlElement("artist")] 
-        public Artist Artist;
-        [XmlElement("name")] 
+        public string Artist;
         public string Title;
-        [XmlElement("playcount")] 
         public int PlayCount;
-
-        // These elements are available in the API but useless and almost always null...
-
-        //[XmlElement("mbid")] 
-        //public string MusicBrainzId;
-        //[XmlElement("url")]
-        //public string Url;
-    }
-
-    public struct Artist
-    {
-        [XmlText] 
-        public string Name;
-
-        // Ditto here
-
-        //[XmlAttribute("mbid")] 
-        //public string MusicBrainzId;
     }
 }

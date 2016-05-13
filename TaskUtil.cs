@@ -48,20 +48,32 @@ namespace ScrobbleMapper
                 }
 
                 // Bring back the host context (in its own thread)
-                host.BeginInvoke((Action) delegate
+                bool enteredOnce = false;
+                Action bringBackHostContext = () =>
                 {
-                    reporter.Close();
-                    reporter = null;
+                    if (!enteredOnce)
+                    {
+                        enteredOnce = true;
 
-                    host.Enabled = true;
-                    host.Focus();
+                        reporter.Close();
+                        reporter = null;
 
-                    // Execute the provided actions
-                    if (success)
-                        onSuccess(taskContext.Task.Value);
-                    else if (!canceled)
-                        onError(error);
-                });
+                        host.Enabled = true;
+                        host.Focus();
+
+                        // Execute the provided actions
+                        if (success)
+                            onSuccess(taskContext.Task.Value);
+                        else if (!canceled)
+                            onError(error);
+                    }
+                };
+
+                IAsyncResult ar = host.BeginInvoke(bringBackHostContext);
+                while (!ar.AsyncWaitHandle.WaitOne(500, false) && !enteredOnce)
+                {
+                    ar = host.BeginInvoke(bringBackHostContext);
+                }
             });
         }
     }
