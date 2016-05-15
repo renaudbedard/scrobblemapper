@@ -7,7 +7,7 @@ namespace ScrobbleMapper.LastFm
     /// <summary>
     /// A track supplied by the Last.fm API
     /// </summary>
-    class ScrobbledTrack
+    class ScrobbledTrack : IEquatable<ScrobbledTrack>
     {
         public ScrobbledTrack(string artist, string title, int playCount, DateTime weekLastPlayed)
         {
@@ -29,6 +29,22 @@ namespace ScrobbleMapper.LastFm
 
         public int PlayCount { get; set; }
         public DateTime WeekLastPlayed { get; set; }
+
+        public bool Equals(ScrobbledTrack other)
+        {
+            return other.ArtistKey == ArtistKey && other.TitleKey == TitleKey;
+        }
+
+        public override bool Equals(object obj)
+        {
+            var otherTrack = obj as ScrobbledTrack;
+            return obj != null && Equals(otherTrack);
+        }
+
+        public override int GetHashCode()
+        {
+            return ArtistKey.GetHashCode() ^ TitleKey.GetHashCode();
+        }
     }
 
     // The following classes are only to have sorting on the ListView control... :(

@@ -69,8 +69,9 @@ namespace ScrobbleMapper
                     }
                 };
 
+                // Try as many times as required, but only allow 1 execution of the action
                 IAsyncResult ar = host.BeginInvoke(bringBackHostContext);
-                while (!ar.AsyncWaitHandle.WaitOne(500, false) && !enteredOnce)
+                while (!ar.AsyncWaitHandle.WaitOne(100, false) && !enteredOnce)
                 {
                     ar = host.BeginInvoke(bringBackHostContext);
                 }

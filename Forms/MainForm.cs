@@ -1,13 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Management;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Win32;
 using ScrobbleMapper.LastFm;
 using ScrobbleMapper.Library;
 using ScrobbleMapper.Properties;
+using System.IO;
+using System.Xml.Linq;
+using System.Xml;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace ScrobbleMapper.Forms
 {
@@ -20,13 +25,15 @@ namespace ScrobbleMapper.Forms
         WmpLibraryManager wmpLibrary;
         ItunesLibraryManager iTunesLibrary;
 
-        public IEnumerable<ScrobbledTrack> scrobbles;
+        ScrobbleArchive scrobbleData;
 
         public MainForm()
         {
             InitializeComponent();
             UsernameText.Text = Settings.Default.LastFmUsername;
             fetcher = new ScrobbleFetcher();
+
+            ExportMenuItem.Enabled = false;
         }
 
         #region Form Events
@@ -45,13 +52,41 @@ namespace ScrobbleMapper.Forms
         {
             Settings.Default.LastFmUsername = UsernameText.Text;
 
-            TaskUtil.PerformForegroundTask(this, fetcher.FetchAsync(UsernameText.Text), result =>
+            var fromWeek = scrobbleData == null ? DateTime.MinValue : scrobbleData.LastWeekFetched;
+
+            TaskUtil.PerformForegroundTask(this, fetcher.FetchAsync(UsernameText.Text, fromWeek), result =>
             {
                 if (result.Errors.Count() > 0)
                     new ErrorReporter(result.Errors) { AlternateTaskName = "fetching the user's scrobbles.", AlternateItemName = "Weekly chart" }.ShowDialog();
 
-                scrobbles = result.Scrobbles;
-                TracksView.DataSource = new ScrobbledTrackBindingList(scrobbles);
+                if (scrobbleData == null)
+                {
+                    scrobbleData = new ScrobbleArchive { Scrobbles = result.Scrobbles };
+                    ExportMenuItem.Enabled = true;
+                }
+                else
+                {
+                    // merge scrobbles
+                    var currentScrobbleSet = new Dictionary<ScrobbledTrack, ScrobbledTrack>(scrobbleData.Scrobbles.Count);
+                    foreach (var scrobble in scrobbleData.Scrobbles)
+                        currentScrobbleSet.Add(scrobble, scrobble);
+
+                    foreach (var fetchedScrobble in result.Scrobbles)
+                    {
+                        ScrobbledTrack currentScrobble;
+                        if (currentScrobbleSet.TryGetValue(fetchedScrobble, out currentScrobble))
+                        {
+                            currentScrobble.PlayCount += fetchedScrobble.PlayCount;
+                            if (currentScrobble.WeekLastPlayed < fetchedScrobble.WeekLastPlayed)
+                                currentScrobble.WeekLastPlayed = fetchedScrobble.WeekLastPlayed;
+                        }
+                        else
+                            scrobbleData.Scrobbles.Add(fetchedScrobble);
+                    }
+                }
+                scrobbleData.LastWeekFetched = result.LastWeekFetched;
+
+                TracksView.DataSource = new ScrobbledTrackBindingList(scrobbleData.Scrobbles);
                 MapToWmpButton.Enabled = hasWmp;
                 MapToITunesButton.Enabled = hasiTunes;
             },
@@ -125,7 +160,7 @@ namespace ScrobbleMapper.Forms
 
         void MapToLibrary(LibraryManager library)
         {
-            TaskUtil.PerformForegroundTask(this, library.MapAsync(scrobbles),
+            TaskUtil.PerformForegroundTask(this, library.MapAsync(scrobbleData.Scrobbles),
                 result => ChooseFuzzyMatches(library, result),
                 error => MessageBox.Show("An error occured when updating the library." +
                                          Environment.NewLine + Environment.NewLine +
@@ -167,9 +202,151 @@ namespace ScrobbleMapper.Forms
 
         #region Main Menu Events
 
-        void AboutMenuItem_Click(object sender, EventArgs e)
+        void ImportMenuItem_Click(object sender, EventArgs e)
         {
-            new AboutBox().ShowDialog();
+            var dialog = new OpenFileDialog
+            {
+                Filter = "XML (*.xml)|*.xml|JSON (*.json)|*.json",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            TaskUtil.PerformForegroundTask(this, new ReportingTask<bool>
+            {
+                Task = Future.Create(() => ImportScrobbles(dialog.FileName)),
+            },
+            _ =>
+            {
+                TracksView.DataSource = new ScrobbledTrackBindingList(scrobbleData.Scrobbles);
+                MapToWmpButton.Enabled = hasWmp;
+                MapToITunesButton.Enabled = hasiTunes;
+                ExportMenuItem.Enabled = true;
+            },
+            error =>
+            {
+                MessageBox.Show("An error occured while importing scrobbles." +
+                                         Environment.NewLine + Environment.NewLine +
+                                         "Details : " + error.Message, "Error!",
+                                         MessageBoxButtons.OK, MessageBoxIcon.Error);
+            });
+        }
+
+        bool ImportScrobbles(string filename)
+        {
+            FileInfo fileInfo = new FileInfo(filename);
+
+            switch (fileInfo.Extension)
+            {
+                case ".xml":
+                    var document = XDocument.Load(filename);
+                    var documentElement = document.Element("ScrobbleArchive");
+
+                    scrobbleData = new ScrobbleArchive
+                    {
+                        LastWeekFetched = DateTime.Parse(documentElement.Element("LastWeekFetched").Value),
+                        Scrobbles = (
+                            from element in documentElement.Element("Scrobbles").Elements("ScrobbledTrack")
+                            select new ScrobbledTrack(
+                                element.Element("Artist").Value,
+                                element.Element("Title").Value,
+                                int.Parse(element.Element("PlayCount").Value),
+                                DateTime.Parse(element.Element("WeekLastPlayed").Value))
+                        ).ToList()
+                    };
+                    break;
+
+                case ".json":
+                    using (var reader = File.OpenText(filename))
+                    {
+                        var root = JObject.Load(new JsonTextReader(reader));
+
+                        scrobbleData = new ScrobbleArchive
+                        {
+                            LastWeekFetched = root["lastWeekFetched"].Value<DateTime>(),
+                            Scrobbles = (
+                                from item in root["scrobbles"].Children()
+                                select new ScrobbledTrack(
+                                    item["artist"].Value<string>(),
+                                    item["title"].Value<string>(),
+                                    item["playCount"].Value<int>(),
+                                    item["weekLastPlayed"].Value<DateTime>())
+                            ).ToList()
+                        };
+                    }
+                    break;
+            }
+
+            return true;
+        }
+
+        void ExportMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Filter = "XML (*.xml)|*.xml|JSON (*.json)|*.json"
+            };
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            TaskUtil.PerformForegroundTask(this, new ReportingTask<bool>
+            {
+                Task = Future.Create(() => ExportScrobbles(dialog.FileName)),
+            },
+            ActionUtil.NullAction,
+            error => MessageBox.Show("An error occured while exporting scrobbles." +
+                                     Environment.NewLine + Environment.NewLine +
+                                     "Details : " + error.Message, "Error!",
+                                     MessageBoxButtons.OK, MessageBoxIcon.Error));
+        }
+
+        bool ExportScrobbles(string filename)
+        {
+            FileInfo fileInfo = new FileInfo(filename);
+
+            switch (fileInfo.Extension)
+            {
+                case ".xml":
+                    var document = new XDocument(
+                        new XDeclaration("1.0", "UTF-8", "yes"),
+                        new XElement("ScrobbleArchive",
+                            new XElement("LastWeekFetched", scrobbleData.LastWeekFetched),
+                            new XElement("Scrobbles",
+                                from scrobble in scrobbleData.Scrobbles
+                                select new XElement("ScrobbledTrack",
+                                    new XElement("Artist", scrobble.Artist),
+                                    new XElement("Title", scrobble.Title),
+                                    new XElement("PlayCount", scrobble.PlayCount),
+                                    new XElement("WeekLastPlayed", scrobble.WeekLastPlayed)))));
+
+                    using (var stream = File.CreateText(filename))
+                    using (var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true }))
+                    {
+                        document.WriteTo(writer);
+                    }
+                    break;
+
+                case ".json":
+                    var data = new JObject(
+                        new JProperty("lastWeekFetched", scrobbleData.LastWeekFetched),
+                        new JProperty("scrobbles",
+                            new JArray(
+                                from scrobble in scrobbleData.Scrobbles
+                                select new JObject(
+                                    new JProperty("artist", scrobble.Artist),
+                                    new JProperty("title", scrobble.Title),
+                                    new JProperty("playCount", scrobble.PlayCount),
+                                    new JProperty("weekLastPlayed", scrobble.WeekLastPlayed)))));
+
+                    using (var stream = File.CreateText(filename))
+                    using (var writer = new JsonTextWriter(stream) { Formatting = Newtonsoft.Json.Formatting.Indented })
+                    {
+                        data.WriteTo(writer);
+                    }
+                    break;
+            }
+
+            return true;
         }
 
         void ExitMenuItem_Click(object sender, EventArgs e)
@@ -184,6 +361,11 @@ namespace ScrobbleMapper.Forms
                 if (optionsDialog.ShowDialog(this) == DialogResult.OK)
                     Settings.Default.MinimumEditDistance = optionsDialog.MinimumEditDistance;
             }
+        }
+
+        void AboutMenuItem_Click(object sender, EventArgs e)
+        {
+            new AboutBox().ShowDialog();
         }
 
         #endregion

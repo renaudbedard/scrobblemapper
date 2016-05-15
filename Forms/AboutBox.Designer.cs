@@ -90,9 +90,9 @@
             this.VersionLabel.AutoSize = true;
             this.VersionLabel.Location = new System.Drawing.Point(12, 47);
             this.VersionLabel.Name = "VersionLabel";
-            this.VersionLabel.Size = new System.Drawing.Size(64, 13);
+            this.VersionLabel.Size = new System.Drawing.Size(63, 13);
             this.VersionLabel.TabIndex = 4;
-            this.VersionLabel.Text = "Version 2.1";
+            this.VersionLabel.Text = "Version 3.0";
             // 
             // TitleLabel
             // 
@@ -111,7 +111,7 @@
             this.UsedModulesLabel.Size = new System.Drawing.Size(352, 32);
             this.UsedModulesLabel.TabIndex = 4;
             this.UsedModulesLabel.Text = "Uses the Last.fm 2.0 RESTful XML API, the iTunes COM Interface and the Windows Me" +
-                "dia Player 11 COM Interface";
+    "dia Player 11 COM Interface";
             // 
             // AboutBox
             // 

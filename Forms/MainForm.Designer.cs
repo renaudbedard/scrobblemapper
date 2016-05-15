@@ -28,11 +28,15 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.UsernameText = new System.Windows.Forms.TextBox();
             this.UsernameLabel = new System.Windows.Forms.Label();
             this.TracksView = new System.Windows.Forms.DataGridView();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.FileMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ImportMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ExportMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.ExitMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ToolsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.OptionsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -69,9 +73,9 @@
             this.TracksView.AllowUserToDeleteRows = false;
             this.TracksView.AllowUserToOrderColumns = true;
             this.TracksView.AllowUserToResizeRows = false;
-            this.TracksView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.TracksView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.TracksView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.TracksView.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.TracksView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -98,15 +102,37 @@
             // FileMenuItem
             // 
             this.FileMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.ImportMenuItem,
+            this.ExportMenuItem,
+            this.toolStripSeparator1,
             this.ExitMenuItem});
             this.FileMenuItem.Name = "FileMenuItem";
             this.FileMenuItem.Size = new System.Drawing.Size(37, 20);
             this.FileMenuItem.Text = "&File";
             // 
+            // ImportMenuItem
+            // 
+            this.ImportMenuItem.Name = "ImportMenuItem";
+            this.ImportMenuItem.Size = new System.Drawing.Size(173, 22);
+            this.ImportMenuItem.Text = "&Import Scrobbles...";
+            this.ImportMenuItem.Click += new System.EventHandler(this.ImportMenuItem_Click);
+            // 
+            // ExportMenuItem
+            // 
+            this.ExportMenuItem.Name = "ExportMenuItem";
+            this.ExportMenuItem.Size = new System.Drawing.Size(173, 22);
+            this.ExportMenuItem.Text = "&Export Scrobbles...";
+            this.ExportMenuItem.Click += new System.EventHandler(this.ExportMenuItem_Click);
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(170, 6);
+            // 
             // ExitMenuItem
             // 
             this.ExitMenuItem.Name = "ExitMenuItem";
-            this.ExitMenuItem.Size = new System.Drawing.Size(92, 22);
+            this.ExitMenuItem.Size = new System.Drawing.Size(173, 22);
             this.ExitMenuItem.Text = "E&xit";
             this.ExitMenuItem.Click += new System.EventHandler(this.ExitMenuItem_Click);
             // 
@@ -115,13 +141,13 @@
             this.ToolsMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.OptionsMenuItem});
             this.ToolsMenuItem.Name = "ToolsMenuItem";
-            this.ToolsMenuItem.Size = new System.Drawing.Size(48, 20);
+            this.ToolsMenuItem.Size = new System.Drawing.Size(47, 20);
             this.ToolsMenuItem.Text = "&Tools";
             // 
             // OptionsMenuItem
             // 
             this.OptionsMenuItem.Name = "OptionsMenuItem";
-            this.OptionsMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.OptionsMenuItem.Size = new System.Drawing.Size(125, 22);
             this.OptionsMenuItem.Text = "&Options...";
             this.OptionsMenuItem.Click += new System.EventHandler(this.OptionsMenuItem_Click);
             // 
@@ -199,6 +225,7 @@
             this.Controls.Add(this.UsernameText);
             this.Controls.Add(this.menuStrip1);
             this.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -227,5 +254,8 @@
         private System.Windows.Forms.ToolStripMenuItem OptionsMenuItem;
         private System.Windows.Forms.ToolStripMenuItem HelpMenuItem;
         private System.Windows.Forms.ToolStripMenuItem AboutMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ExportMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ImportMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
     }
 }
