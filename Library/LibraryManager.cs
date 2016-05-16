@@ -131,7 +131,7 @@ namespace ScrobbleMapper.Library
             if (fuzzyMatches != null && fuzzyMatches.Count != 0)
                 state.FuzzyMatches.Add(new FuzzyMatch(scrobble, fuzzyMatches.OrderByDescending(x => x.Relevance).ToArray()));
             else
-                Interlocked.Increment(ref state.NotFound);
+                state.NotFound++;
 
             // No direct match to return, fuzzy matches added to state
             return null;
