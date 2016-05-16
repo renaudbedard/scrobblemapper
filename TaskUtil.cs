@@ -63,9 +63,16 @@ namespace ScrobbleMapper
 
                         // Execute the provided actions
                         if (success)
-                            onSuccess(taskContext.Task.Value);
+                        {
+                            var result = taskContext.Task.Result;
+                            taskContext.Dispose();
+                            onSuccess(result);
+                        }
                         else if (!canceled)
+                        {
+                            taskContext.Dispose();
                             onError(error);
+                        }
                     }
                 };
 

@@ -5,7 +5,8 @@ namespace ScrobbleMapper.LastFm
 {
     class ScrobbleArchive
     {
-        public List<ScrobbledTrack> Scrobbles;
+        public string Account;
         public DateTime LastWeekFetched;
+        public List<ScrobbledTrack> Scrobbles;
     }
 }

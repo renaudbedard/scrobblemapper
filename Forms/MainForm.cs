@@ -30,7 +30,6 @@ namespace ScrobbleMapper.Forms
         public MainForm()
         {
             InitializeComponent();
-            UsernameText.Text = Settings.Default.LastFmUsername;
             fetcher = new ScrobbleFetcher();
 
             ExportMenuItem.Enabled = false;
@@ -50,9 +49,20 @@ namespace ScrobbleMapper.Forms
 
         void FetchButton_Click(object sender, EventArgs eventArgs)
         {
-            Settings.Default.LastFmUsername = UsernameText.Text;
-
             var fromWeek = scrobbleData == null ? DateTime.MinValue : scrobbleData.LastWeekFetched;
+
+            if (scrobbleData != null && UsernameText.Text != scrobbleData.Account)
+            {
+                if (MessageBox.Show(this,
+                    string.Format("Username '{0}' doesn't match the Last.fm account whose scrobbles were last fetched ('{1}').\nFetching from account '{0}' will clear currently loaded data and start over from scratch.\n\nContinue?",
+                        UsernameText.Text, scrobbleData.Account),
+                    "Username mismatch", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                {
+                    return;
+                }
+                else
+                    scrobbleData = null;
+            }
 
             TaskUtil.PerformForegroundTask(this, fetcher.FetchAsync(UsernameText.Text, fromWeek), result =>
             {
@@ -61,7 +71,7 @@ namespace ScrobbleMapper.Forms
 
                 if (scrobbleData == null)
                 {
-                    scrobbleData = new ScrobbleArchive { Scrobbles = result.Scrobbles };
+                    scrobbleData = new ScrobbleArchive { Scrobbles = result.Scrobbles, Account = UsernameText.Text };
                     ExportMenuItem.Enabled = true;
                 }
                 else
@@ -179,6 +189,8 @@ namespace ScrobbleMapper.Forms
                                                          "Details : " + error.Message, "Error!",
                                                          MessageBoxButtons.OK, MessageBoxIcon.Error));
             }
+            else
+                ShowSummary(result ?? new MapResult(null, 0, 0, 0, 0, null), new ChooseFuzzyMatchesResult(0, 0, 0, null));
         }
 
         void ShowSummary(MapResult mapResult, ChooseFuzzyMatchesResult fuzzyResult)
@@ -214,7 +226,7 @@ namespace ScrobbleMapper.Forms
 
             TaskUtil.PerformForegroundTask(this, new ReportingTask<bool>
             {
-                Task = Future.Create(() => ImportScrobbles(dialog.FileName)),
+                Task = Task.Factory.StartNew(() => ImportScrobbles(dialog.FileName)),
             },
             _ =>
             {
@@ -244,6 +256,7 @@ namespace ScrobbleMapper.Forms
 
                     scrobbleData = new ScrobbleArchive
                     {
+                        Account = documentElement.Element("Account").Value,
                         LastWeekFetched = DateTime.Parse(documentElement.Element("LastWeekFetched").Value),
                         Scrobbles = (
                             from element in documentElement.Element("Scrobbles").Elements("ScrobbledTrack")
@@ -263,6 +276,7 @@ namespace ScrobbleMapper.Forms
 
                         scrobbleData = new ScrobbleArchive
                         {
+                            Account = root["account"].Value<string>(),
                             LastWeekFetched = root["lastWeekFetched"].Value<DateTime>(),
                             Scrobbles = (
                                 from item in root["scrobbles"].Children()
@@ -291,7 +305,7 @@ namespace ScrobbleMapper.Forms
 
             TaskUtil.PerformForegroundTask(this, new ReportingTask<bool>
             {
-                Task = Future.Create(() => ExportScrobbles(dialog.FileName)),
+                Task = Task.Factory.StartNew(() => ExportScrobbles(dialog.FileName)),
             },
             ActionUtil.NullAction,
             error => MessageBox.Show("An error occured while exporting scrobbles." +
@@ -310,6 +324,7 @@ namespace ScrobbleMapper.Forms
                     var document = new XDocument(
                         new XDeclaration("1.0", "UTF-8", "yes"),
                         new XElement("ScrobbleArchive",
+                            new XElement("Account", scrobbleData.Account),
                             new XElement("LastWeekFetched", scrobbleData.LastWeekFetched),
                             new XElement("Scrobbles",
                                 from scrobble in scrobbleData.Scrobbles
@@ -328,6 +343,7 @@ namespace ScrobbleMapper.Forms
 
                 case ".json":
                     var data = new JObject(
+                        new JProperty("account", scrobbleData.Account),
                         new JProperty("lastWeekFetched", scrobbleData.LastWeekFetched),
                         new JProperty("scrobbles",
                             new JArray(

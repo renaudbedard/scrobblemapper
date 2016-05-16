@@ -34,17 +34,5 @@ namespace ScrobbleMapper.Properties {
                 this["MinimumEditDistance"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string LastFmUsername {
-            get {
-                return ((string)(this["LastFmUsername"]));
-            }
-            set {
-                this["LastFmUsername"] = value;
-            }
-        }
     }
 }

@@ -5,8 +5,5 @@
     <Setting Name="MinimumEditDistance" Type="System.Single" Scope="User">
       <Value Profile="(Default)">0.5</Value>
     </Setting>
-    <Setting Name="LastFmUsername" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
   </Settings>
 </SettingsFile>

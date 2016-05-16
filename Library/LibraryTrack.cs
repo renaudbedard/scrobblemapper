@@ -3,6 +3,7 @@ using System.Threading;
 using iTunesLib;
 using ScrobbleMapper.LastFm;
 using WMPLib;
+using System.Runtime.InteropServices;
 
 namespace ScrobbleMapper.Library
 {
@@ -25,7 +26,7 @@ namespace ScrobbleMapper.Library
 
             // Defer initialization for the following, for performance
 
-            album = new LazyInit<string>(() => libraryItem.Album ?? "");
+            album = new Lazy<string>(() => libraryItem.Album ?? "");
 
             playCountCache = new Cacheable<int>(
                 () => LibraryItem.PlayedCount,
@@ -49,6 +50,7 @@ namespace ScrobbleMapper.Library
         const string TitleAttribute = "Title";
         const string AlbumTitleAttribute = "WM/AlbumTitle";
         const string PlayCountAttribute = "UserPlayCount";
+        const string UserLastPlayedTimeAttribute = "UserLastPlayedTime";
 
         public WmpLibraryTrack(IWMPMedia libraryItem)
         {
@@ -62,19 +64,35 @@ namespace ScrobbleMapper.Library
 
             // Defer initialization for the following, for performance
 
-            album = new LazyInit<string>(() => libraryItem.getItemInfo(AlbumTitleAttribute) ?? "");
+            album = new Lazy<string>(() =>
+            {
+                try { return libraryItem.getItemInfo(AlbumTitleAttribute) ?? ""; }
+                catch (COMException)
+                {
+                    return "";
+                }
+            });
 
             playCountCache = new Cacheable<int>(() =>
-                {
-                    int playCount;
-                    if (!int.TryParse(LibraryItem.getItemInfo(PlayCountAttribute), out playCount))
-                        return 0;
-                    return playCount;
-                },
-                value => LibraryItem.setItemInfo(PlayCountAttribute, value.ToString()));
+            {
+                int playCount;
+                if (!int.TryParse(LibraryItem.getItemInfo(PlayCountAttribute), out playCount))
+                    return 0;
+                return playCount;
+            },
+            value =>
+            {
+                LibraryItem.setItemInfo(PlayCountAttribute, value.ToString());
+            });
 
-            // Not implemented (more like implementable...)
-            playDateCache = new Cacheable<DateTime>(() => DateTime.Now, value => { });
+            playDateCache = new Cacheable<DateTime>(() =>
+            {
+                DateTime lastPlayed;
+                if (!DateTime.TryParse(LibraryItem.getItemInfo(UserLastPlayedTimeAttribute), out lastPlayed))
+                    return DateTime.Now;
+                return lastPlayed;
+            },
+            value => LibraryItem.setItemInfo(UserLastPlayedTimeAttribute, value.ToString()));
         }
 
         public IWMPMedia LibraryItem { get; private set; }
@@ -88,7 +106,7 @@ namespace ScrobbleMapper.Library
         public string Title { get; protected set; }
         public string TitleKey { get; protected set; }
 
-        protected LazyInit<string> album;
+        protected Lazy<string> album;
         public string Album
         {
             get { return album.Value; }

@@ -63,7 +63,7 @@ namespace ScrobbleMapper.Forms
             StopButton.Text = "Please wait...";
 
             // This will schedule a canceling, it does NOT force it
-            TaskContext.Task.Cancel();
+            TaskContext.CancellationTokenSource.Cancel();
         }
     }
 }

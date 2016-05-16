@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Collections;
 using System.Threading.Tasks;
 using ScrobbleMapper.Forms;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace ScrobbleMapper.LastFm
 {
@@ -30,7 +30,7 @@ namespace ScrobbleMapper.LastFm
         public IReportingTask<FetchResult> FetchAsync(string user, DateTime fromWeek)
         {
             var context = new ReportingTask<FetchResult>();
-            context.Task = Future.Create(() => Fetch(context, new FetchState(user, fromWeek)));
+            context.Task = Task.Factory.StartNew(() => Fetch(context, new FetchState(user, fromWeek)), context.CancellationTokenSource.Token);
             return context;
         }
 
@@ -48,17 +48,17 @@ namespace ScrobbleMapper.LastFm
             taskContext.TotalItems = chartsResponse.Content.Charts.Length;
 
             // ...in parallel!
-            Parallel.ForEach(chartsResponse.Content.Charts, 
-            () =>
+            Parallel.ForEach(chartsResponse.Content.Charts,
+                () =>
                 {
                     var thisWeek = new List<ScrobbledTrack>();
                     state.WeeklyTracks.Enqueue(thisWeek);
                     return thisWeek;
                 },
-            (range, index, parallelState) =>
+                (range, parallelState, output) =>
                 {
                     // Allow mid-operation canceling
-                    if (taskContext.Task.IsCanceled) 
+                    if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
                         parallelState.Stop();
 
                     // Skip weeks that have already been imported or fetched
@@ -70,16 +70,19 @@ namespace ScrobbleMapper.LastFm
                         if (tracksResponse.StatusCode == StatusCode.Failed)
                             state.Errors.Enqueue(new QualifiedError(range.From.ToShortDateString() + " to " + range.To.ToShortDateString(), "'" + tracksResponse.Error.Message + "' (scrobbles from that week were ignored)"));
                         else if (tracksResponse.Content.Tracks != null) // This does happen sometimes
-                            parallelState.ThreadLocalState.AddRange(from track in tracksResponse.Content.Tracks
-                                                                    select new ScrobbledTrack(track.Artist, track.Title,
-                                                                                              track.PlayCount, range.To));
+                            output.AddRange(from track in tracksResponse.Content.Tracks
+                                            select new ScrobbledTrack(track.Artist, track.Title,
+                                                                      track.PlayCount, range.To));
                     }
 
                     taskContext.ReportItemCompleted();
-                });
+                    return output;
+                },
+                ActionUtil.NullAction);
+
             // Early out
-            if (taskContext.Task.IsCanceled)
-                return null;
+            if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
+                taskContext.CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
             // Compose results
             taskContext.Description = "Assembling charts";

@@ -21,7 +21,7 @@ namespace ScrobbleMapper.Library
         public override IReportingTask<MapResult> MapAsync(IEnumerable<ScrobbledTrack> scrobbles)
         {
             var context = new ReportingTask<MapResult>();
-            context.Task = Future.Create(() => Map(context, new MapState(scrobbles)));
+            context.Task = Task.Factory.StartNew(() => Map(context, new MapState(scrobbles)), context.CancellationTokenSource.Token);
             return context;
         }
 
@@ -34,11 +34,10 @@ namespace ScrobbleMapper.Library
 
             taskContext.TotalItems = trackCount + state.Scrobbles.Count();
 
-            // No concurrent dictionaries in this CTP, so this has to be sequential...
             for (int i = 1; i <= trackCount; i++)
             {
-                if (taskContext.Task.IsCanceled)
-                    return null;
+                if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
+                    taskContext.CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                 var track = new ItunesLibraryTrack(iTunesTracks.get_ItemByPlayOrder(i));
                 taskContext.Description = "Registering iTunes track '" + track.Artist + " - " + track.Title + "'";
@@ -52,8 +51,8 @@ namespace ScrobbleMapper.Library
             FindAndUpdateTracks(taskContext, state);
 
             // "Early" out
-            if (taskContext.Task.IsCanceled)
-                return null;
+            if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
+                taskContext.CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
             // Compose and return
             return new MapResult(state.FuzzyMatches.ToArray(),

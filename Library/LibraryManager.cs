@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Collections;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ScrobbleMapper.Forms;
 using ScrobbleMapper.LastFm;
 using ScrobbleMapper.Properties;
+using System.Collections.Concurrent;
 
 namespace ScrobbleMapper.Library
 {
@@ -60,7 +60,7 @@ namespace ScrobbleMapper.Library
         {
             Parallel.ForEach(state.Scrobbles, (scrobble, parallelState) =>
             {
-                if (taskContext.Task.IsCanceled) // Allow mid-task canceling
+                if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
                     parallelState.Stop();
 
                 taskContext.Description = "Matching scrobble '" + scrobble.Artist + " - " + scrobble.Title + "'";
@@ -79,7 +79,10 @@ namespace ScrobbleMapper.Library
                     catch (COMException e)
                     {
                         // Log errors to a list
-                        state.Errors.Enqueue(new QualifiedError(media.ToString(), InterpretErrorCode(e.ErrorCode)));
+                        var errorString = InterpretErrorCode(e.ErrorCode);
+                        var mediaString = media.ToString();
+                        var error = new QualifiedError(mediaString, errorString);
+                        state.Errors.Enqueue(error);
                         Interlocked.Increment(ref state.UpdateFailed);
                     }
                 }
@@ -228,7 +231,7 @@ namespace ScrobbleMapper.Library
         public IReportingTask<ChooseFuzzyMatchesResult> ChooseFuzzyMatchesAsync(Form host, IEnumerable<FuzzyMatch> fuzzyMatches)
         {
             var context = new ReportingTask<ChooseFuzzyMatchesResult>();
-            context.Task = Future.Create(() => ChooseFuzzyMatches(context, new ChooseFuzzyMatchesState(fuzzyMatches, host)));
+            context.Task = Task.Factory.StartNew(() => ChooseFuzzyMatches(context, new ChooseFuzzyMatchesState(fuzzyMatches, host)), context.CancellationTokenSource.Token);
             return context;
         }
 

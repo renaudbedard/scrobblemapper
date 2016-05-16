@@ -14,6 +14,9 @@ namespace ScrobbleMapper.Library
     {
         readonly WindowsMediaPlayer WindowsMediaPlayer = new WindowsMediaPlayer();
 
+        const string MediaTypeAttribute = "MediaType";
+        const string AudioMediaType = "audio";
+
         /// <summary>
         /// Starts the asynchronous reporting task for library mapping
         /// </summary>
@@ -22,7 +25,7 @@ namespace ScrobbleMapper.Library
         public override IReportingTask<MapResult> MapAsync(IEnumerable<ScrobbledTrack> scrobbles)
         {
             var context = new ReportingTask<MapResult>();
-            var future = Future.Create(() => Map(context, new MapState(scrobbles)));
+            var future = Task.Factory.StartNew(() => Map(context, new MapState(scrobbles)), context.CancellationTokenSource.Token);
             context.Task = future;
 
             return context;
@@ -33,17 +36,16 @@ namespace ScrobbleMapper.Library
             // Locally register all tracks from WMP
             var library = (IWMPMediaCollection2) WindowsMediaPlayer.mediaCollection;
 
-            taskContext.Description = "Fetching WMP library playlist";
-            var wmpTracks = library.getAll();
-            var trackCount = wmpTracks.count;
+            taskContext.Description = "Fetching WMP library items";
+            var wmpTracks = library.getByAttribute(MediaTypeAttribute, AudioMediaType);
 
-            taskContext.TotalItems = trackCount + state.Scrobbles.Count();
+            var itemCount = wmpTracks.count;
+            taskContext.TotalItems = itemCount + state.Scrobbles.Count();
 
-            // No concurrent dictionaries in this CTP, so this has to be sequential...
-            for (int i = 0; i < trackCount; i++)
+            for (int i = 0; i < itemCount; i++)
             {
-                if (taskContext.Task.IsCanceled) 
-                    return null;
+                if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
+                    taskContext.CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                 var track = new WmpLibraryTrack(wmpTracks.get_Item(i));
                 taskContext.Description = "Registering WMP track '" + track.Artist + " - " + track.Title + "'";
@@ -57,8 +59,8 @@ namespace ScrobbleMapper.Library
             FindAndUpdateTracks(taskContext, state);
 
             // "Early" out
-            if (taskContext.Task.IsCanceled)
-                return null;
+            if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
+                taskContext.CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
             // Compose and return
             return new MapResult(state.FuzzyMatches.ToArray(), 

@@ -17,7 +17,7 @@ namespace ScrobbleMapper
     /// </summary>
     class ReportingTask<T> : ReportingTaskBase, IReportingTask<T>
     {
-        public Future<T> Task { get; set; }
+        public Task<T> Task { get; set; }
 
         Task IReportingTask.Task
         {
@@ -30,14 +30,15 @@ namespace ScrobbleMapper
     /// </summary>
     interface IReportingTask<T> : IReportingTask
     {
-        new Future<T> Task { get; }
+        new Task<T> Task { get; }
     }
 
     /// <summary>
     /// The immutable-ish interface to a reporting task
     /// </summary>
-    interface IReportingTask
+    interface IReportingTask : IDisposable
     {
+        CancellationTokenSource CancellationTokenSource { get; }
         Task Task { get; }
 
         event Action ProgressChanged;
@@ -55,10 +56,17 @@ namespace ScrobbleMapper
         public event Action ProgressChanged = ActionUtil.NullAction;
         public event Action DescriptionChanged = ActionUtil.NullAction;
 
+        public CancellationTokenSource CancellationTokenSource { get; set; } = new CancellationTokenSource();
+
         public void ReportItemCompleted()
         {
             Interlocked.Increment(ref itemsCompleted);
             ProgressChanged();
+        }
+
+        public void Dispose()
+        {
+            CancellationTokenSource.Dispose();
         }
 
         int itemsCompleted;
