@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using iTunesLib;
 using ScrobbleMapper.LastFm;
+using System.Runtime.InteropServices;
+using System;
 
 namespace ScrobbleMapper.Library
 {
@@ -57,6 +59,11 @@ namespace ScrobbleMapper.Library
             // Compose and return
             return new MapResult(state.FuzzyMatches.ToArray(),
                 state.Updated, state.AlreadyUpToDate, state.NotFound, state.UpdateFailed, state.Errors.ToArray());
+        }
+
+        public override void Dispose()
+        {
+            Marshal.FinalReleaseComObject(iTunes);
         }
 
         /// <summary>

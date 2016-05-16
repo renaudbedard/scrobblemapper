@@ -15,12 +15,14 @@ namespace ScrobbleMapper.Library
     /// <summary>
     /// A base class for both music libraries
     /// </summary>
-    abstract class LibraryManager
+    abstract class LibraryManager : IDisposable
     {
         /// <summary>
         /// Translates a COM error code (HRESULT) as a text message.
         /// </summary>
         protected abstract string InterpretErrorCode(int errorCode);
+
+        public abstract void Dispose();
 
         #region Map
 
@@ -58,37 +60,35 @@ namespace ScrobbleMapper.Library
         /// <param name="state">The current task's state</param>
         protected void FindAndUpdateTracks(ReportingTask<MapResult> taskContext, MapState state)
         {
-            Parallel.ForEach(state.Scrobbles, (scrobble, parallelState) =>
+            foreach (var scrobble in state.Scrobbles)
             {
                 if (taskContext.CancellationTokenSource.Token.IsCancellationRequested)
-                    parallelState.Stop();
+                    break;
 
                 taskContext.Description = "Matching scrobble '" + scrobble.Artist + " - " + scrobble.Title + "'";
 
                 // Only exact matches are updated immediately
                 var media = Find(scrobble, state);
-                if (media != null) 
+                if (media != null)
                 {
                     try
                     {
                         if (media.TryUpdate(scrobble))
-                            Interlocked.Increment(ref state.Updated);
+                            state.Updated++;
                         else
-                            Interlocked.Increment(ref state.AlreadyUpToDate);
+                            state.AlreadyUpToDate++;
                     }
                     catch (COMException e)
                     {
                         // Log errors to a list
-                        var errorString = InterpretErrorCode(e.ErrorCode);
-                        var mediaString = media.ToString();
-                        var error = new QualifiedError(mediaString, errorString);
-                        state.Errors.Enqueue(error);
-                        Interlocked.Increment(ref state.UpdateFailed);
+                        var error = new QualifiedError(media.ToString(), InterpretErrorCode(e.ErrorCode));
+                        state.Errors.Add(error);
+                        state.UpdateFailed++;
                     }
                 }
 
                 taskContext.ReportItemCompleted();
-            });
+            }
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace ScrobbleMapper.Library
 
             // If any fuzzy matches were found
             if (fuzzyMatches != null && fuzzyMatches.Count != 0)
-                state.FuzzyMatches.Enqueue(new FuzzyMatch(scrobble, fuzzyMatches.OrderByDescending(x => x.Relevance).ToArray()));
+                state.FuzzyMatches.Add(new FuzzyMatch(scrobble, fuzzyMatches.OrderByDescending(x => x.Relevance).ToArray()));
             else
                 Interlocked.Increment(ref state.NotFound);
 
@@ -202,9 +202,9 @@ namespace ScrobbleMapper.Library
         protected class MapState
         {
             public readonly Dictionary<string, Dictionary<string, List<LibraryTrack>>> LibraryArtists;
-            public readonly ConcurrentQueue<FuzzyMatch> FuzzyMatches = new ConcurrentQueue<FuzzyMatch>();
+            public readonly List<FuzzyMatch> FuzzyMatches = new List<FuzzyMatch>();
             public readonly IEnumerable<ScrobbledTrack> Scrobbles;
-            public readonly ConcurrentQueue<QualifiedError> Errors = new ConcurrentQueue<QualifiedError>();
+            public readonly List<QualifiedError> Errors = new List<QualifiedError>();
 
             public int NotFound;
             public int Updated;

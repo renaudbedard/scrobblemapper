@@ -40,6 +40,12 @@ namespace ScrobbleMapper.Forms
         void MainForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Settings.Default.Save();
+
+            if (wmpLibrary != null)
+                wmpLibrary.Dispose();
+
+            if (iTunesLibrary != null)
+                iTunesLibrary.Dispose();
         }
 
         void UsernameText_TextChanged(object sender, EventArgs eventArgs)
@@ -218,7 +224,7 @@ namespace ScrobbleMapper.Forms
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "XML (*.xml)|*.xml|JSON (*.json)|*.json",
+                Filter = "JSON (*.json)|*.json|XML (*.xml)|*.xml",
                 CheckFileExists = true
             };
             if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -298,7 +304,7 @@ namespace ScrobbleMapper.Forms
         {
             var dialog = new SaveFileDialog
             {
-                Filter = "XML (*.xml)|*.xml|JSON (*.json)|*.json"
+                Filter = "JSON (*.json)|*.json|XML (*.xml)|*.xml"
             };
             if (dialog.ShowDialog(this) != DialogResult.OK)
                 return;

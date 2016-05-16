@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using ScrobbleMapper.LastFm;
 using WMPLib;
 using System.Collections.Generic;
+using System;
+using System.Runtime.InteropServices;
 
 namespace ScrobbleMapper.Library
 {
@@ -73,6 +75,11 @@ namespace ScrobbleMapper.Library
         protected override string InterpretErrorCode(int errorCode)
         {
             return new Win32Exception(errorCode).Message;
+        }
+
+        public override void Dispose()
+        {
+            Marshal.FinalReleaseComObject(WindowsMediaPlayer);
         }
     }
 }
